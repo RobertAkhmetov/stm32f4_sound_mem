@@ -17,10 +17,13 @@
 //#include "callODS_page.h"
 #include "concierge_page.h"
 //#include "dispetcher_page.h"
-
+#include "spi.h"
+#include "gpio.h"
+#include "flash.h"
 #include "MY_CS43L22.h"
 #include <math.h>
 #include "stm32f4xx_hal_i2s.h"
+#include "at45db161d.h" // spi2 пам€ть
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 I2C_HandleTypeDef hi2c1;
@@ -320,6 +323,7 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
+	MX_GPIO_Init1();
 	
 	MX_DMA_Init();
   MX_I2C1_Init();
@@ -328,9 +332,13 @@ int main(void)
 	
   MX_RNG_Init();
   MX_SPI1_Init();
+	MX_SPI2_Init();
 	
 	//инициализируем таймеры
 	MX_TIM6_Init();//++++++
+	
+	HAL_GPIO_WritePin(FLASH_RES_GPIO_Port, FLASH_RES_Pin, GPIO_PIN_RESET); // —брос чипа
+	HAL_GPIO_WritePin(FLASH_RES_GPIO_Port, FLASH_RES_Pin, GPIO_PIN_SET);
 	
 	
 	CS43_Init(hi2c1, MODE_I2S);
@@ -357,6 +365,27 @@ int main(void)
 
 	TFT9341_ini(320,240); // инициализируем дисплей 240х320
 	TFT9341_SetRotation(3); // устанавливаем горизонтальную ориентацию дл€ домофона
+	
+	
+	uint8_t buff[10];
+	uint8_t byte;
+	
+	
+	uint16_t page=0; uint16_t offset=0; uint32_t razmer=0; uint32_t temp=0;
+	
+	while(1)
+	{
+		AT45_ReadMainMemoryPage( page, offset);
+		HAL_SPI_Receive(&hspi2, &byte, 1, 100);	buff[0] = byte;
+		
+		if (buff[0]==preview_page[0])
+		{
+			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
+		}
+	}
+	
+	
+	
 	
 	ILI9341_Draw_Image((const char*)preview_page);
 	
